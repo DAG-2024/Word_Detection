@@ -57,12 +57,13 @@ class SpeechRestorer:
         # Save transcription
         with open(os.path.join(self.steps_dir, "3_transcription.txt"), "w") as f:
             f.write(asr_result["text"])
-            
-        word_segments = self.asr.get_word_segments(asr_result)
-
+        
         # Save word segments
         with open(os.path.join(self.steps_dir, "4_word_segments.json"), "w") as f:
-            json.dump(word_segments, f, indent=2)
+            json.dump(asr_result["chunks"], f, indent=2)
+
+        word_segments = self.asr.get_word_segments(asr_result)
+
         
         # Step 3: Detect problematic segments
         print("Step 3: Detecting problematic segments...")

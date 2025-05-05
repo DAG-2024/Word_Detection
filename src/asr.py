@@ -78,7 +78,7 @@ class WhisperASR:
         )
         
         with open(os.path.join("output/steps", "3.1_transcription.txt"), "w") as f:
-            f.write(predicted_ids)
+            f.write(str(predicted_ids))
         
         # Get the generated sequence and ensure it's the right shape
         if isinstance(predicted_ids, dict):
