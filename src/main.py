@@ -56,7 +56,7 @@ class SpeechRestorer:
         
         # Save transcription
         with open(os.path.join(self.steps_dir, "2.1_transcription.txt"), "w") as f:
-            f.write(asr_result["text"])
+            f.write(asr_result["text"]) 
         
         # Save word segments
         with open(os.path.join(self.steps_dir, "2.2_word_segments.json"), "w") as f:

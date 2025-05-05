@@ -1,1 +1,0 @@
- Because segments is a generator, the model begins transcription only once you iterating over it.
