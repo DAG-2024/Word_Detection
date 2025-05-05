@@ -1,0 +1,15 @@
+librosa>=0.10.0
+soundfile>=0.12.1
+pydub>=0.25.1
+numpy>=1.24.0
+torch>=2.0.0
+transformers>=4.30.0
+noisereduce>=2.0.0
+nltk>=3.8.1
+spacy>=3.5.0
+pyannote.audio>=3.0.0
+coqui-tts>=0.0.13
+language-tool-python>=2.7.0
+tqdm>=4.65.0
+scipy>=1.10.0
+matplotlib>=3.7.1 
