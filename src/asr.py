@@ -73,22 +73,36 @@ class WhisperASR:
             language=language,
             task="transcribe",
             return_timestamps=True,
-            return_dict_in_generate=True,
-            output_scores=True
+            return_dict_in_generate=True
         )
-        
-        with open(os.path.join("output/steps", "3.1_transcription.txt"), "w") as f:
-            f.write(str(predicted_ids))
         
         # Get the generated sequence and ensure it's the right shape
         if isinstance(predicted_ids, dict):
             sequence = predicted_ids["sequences"]
+            # Get segments if available
+            if "segments" in predicted_ids:
+                segments = predicted_ids["segments"]
+                # Process segments to get word-level timestamps
+                chunks = []
+                for segment in segments:
+                    if "text" in segment and "timestamp" in segment:
+                        chunks.append({
+                            "text": segment["text"].strip(),
+                            "timestamp": (segment["timestamp"][0], segment["timestamp"][1])
+                        })
+                return {
+                    "text": self.processor.batch_decode(sequence, skip_special_tokens=True)[0],
+                    "chunks": chunks
+                }
         else:
             sequence = predicted_ids
             
+        # Convert tensor to numpy array and then to list for processing
+        sequence = sequence.cpu().numpy().tolist()
+        
         # Ensure sequence is 2D (batch_size, sequence_length)
-        if sequence.dim() == 1:
-            sequence = sequence.unsqueeze(0)
+        if isinstance(sequence[0], int):
+            sequence = [sequence]
         
         # Decode the transcription
         transcription = self.processor.batch_decode(
@@ -96,12 +110,16 @@ class WhisperASR:
             skip_special_tokens=False
         )[0]
         
-        # Get timestamps
+        # Get timestamps with detailed decoding
         timestamps = self.processor.batch_decode(
             sequence, 
             skip_special_tokens=False,
-            decode_with_timestamps=True
+            decode_with_timestamps=True,
+            return_timestamps=True
         )[0]
+        
+        print("Raw transcription:", transcription)
+        print("Raw timestamps:", timestamps)
         
         # Process the output to get word-level timestamps
         chunks = []
@@ -109,16 +127,20 @@ class WhisperASR:
         current_start = None
         current_end = None
         
-        for token in timestamps.split():
+        # Split the timestamps string into tokens
+        tokens = timestamps.split()
+        
+        for i, token in enumerate(tokens):
             if token.startswith("<|") and token.endswith("|>"):
-                if current_start is not None and current_text:
+                # If we have accumulated text and have a start time, save the chunk
+                if current_text and current_start is not None:
                     chunks.append({
                         "text": current_text.strip(),
                         "timestamp": (current_start, current_end)
                     })
                     current_text = ""
-                if token == "<|notimestamps|>":
-                    continue
+                
+                # Extract timestamp
                 try:
                     time = float(token.strip("<|>"))
                     if current_start is None:
@@ -127,14 +149,17 @@ class WhisperASR:
                 except ValueError:
                     continue
             else:
+                # Add the word to the current text
                 current_text += " " + token
+                
+                # If this is the last token and have a start time, save the final chunk
+                if i == len(tokens) - 1 and current_start is not None:
+                    chunks.append({
+                        "text": current_text.strip(),
+                        "timestamp": (current_start, current_end)
+                    })
         
-        # Add the last chunk if exists
-        if current_text and current_start is not None:
-            chunks.append({
-                "text": current_text.strip(),
-                "timestamp": (current_start, current_end)
-            })
+        print("Processed chunks:", chunks)
         
         return {
             "text": transcription,

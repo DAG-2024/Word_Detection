@@ -44,26 +44,25 @@ class SpeechRestorer:
         # Step 1: Load and preprocess audio
         print("Step 1: Loading and preprocessing audio...")
         audio_data, sample_rate = load_audio(input_path)
-        save_audio(audio_data, sample_rate, os.path.join(self.steps_dir, "1_original.wav"))
+        save_audio(audio_data, sample_rate, os.path.join(self.steps_dir, "1.1_original.wav"))
         
         print("Reducing noise...")
         audio_data = reduce_noise(audio_data, sample_rate)
-        save_audio(audio_data, sample_rate, os.path.join(self.steps_dir, "2_denoised.wav"))
+        save_audio(audio_data, sample_rate, os.path.join(self.steps_dir, "1.2_denoised.wav"))
         
         # Step 2: Perform ASR
         print("Step 2: Transcribing audio...")
         asr_result = self.asr.transcribe(audio_data, sample_rate, language)
         
         # Save transcription
-        with open(os.path.join(self.steps_dir, "3_transcription.txt"), "w") as f:
+        with open(os.path.join(self.steps_dir, "2.1_transcription.txt"), "w") as f:
             f.write(asr_result["text"])
         
         # Save word segments
-        with open(os.path.join(self.steps_dir, "4_word_segments.json"), "w") as f:
+        with open(os.path.join(self.steps_dir, "2.2_word_segments.json"), "w") as f:
             json.dump(asr_result["chunks"], f, indent=2)
 
         word_segments = self.asr.get_word_segments(asr_result)
-
         
         # Step 3: Detect problematic segments
         print("Step 3: Detecting problematic segments...")
@@ -71,7 +70,7 @@ class SpeechRestorer:
         grammar_error_segments = self.detector.detect_grammar_errors(asr_result["text"], word_segments)
         
         # Save detection results
-        with open(os.path.join(self.steps_dir, "5_detection_results.json"), "w") as f:
+        with open(os.path.join(self.steps_dir, "3.1_detection_results.json"), "w") as f:
             json.dump({
                 "low_confidence_segments": low_confidence_segments,
                 "grammar_error_segments": grammar_error_segments
@@ -83,9 +82,9 @@ class SpeechRestorer:
                          if s["confidence"] > 0.9]
         self.detector.train_acoustic_model(audio_data, sample_rate, clean_segments)
         acoustic_anomaly_segments = self.detector.detect_acoustic_anomalies(audio_data, sample_rate)
-        
+
         # Save acoustic detection results
-        with open(os.path.join(self.steps_dir, "6_acoustic_detection.json"), "w") as f:
+        with open(os.path.join(self.steps_dir, "3.2_acoustic_detection.json"), "w") as f:
             json.dump(acoustic_anomaly_segments, f, indent=2)
         
         # Combine all problematic segments
@@ -95,7 +94,7 @@ class SpeechRestorer:
         problematic_segments.sort(key=lambda x: x[0])
         
         # Save combined problematic segments
-        with open(os.path.join(self.steps_dir, "7_problematic_segments.json"), "w") as f:
+        with open(os.path.join(self.steps_dir, "3.3_problematic_segments.json"), "w") as f:
             json.dump(problematic_segments, f, indent=2)
         
         # Step 4: Extract reference audio for voice cloning
@@ -130,7 +129,7 @@ class SpeechRestorer:
             
             # Save synthesized audio
             save_audio(synth_audio, synth_sr, 
-                      os.path.join(self.steps_dir, f"8_synthesized_{start:.2f}_{end:.2f}.wav"))
+                      os.path.join(self.steps_dir, f"5.1_synthesized_{start:.2f}_{end:.2f}.wav"))
             
             # Ensure sample rates match
             if synth_sr != sample_rate:
@@ -161,7 +160,7 @@ class SpeechRestorer:
             final_audio[start_sample:end_sample] = synth_audio
         
         # Save predictions
-        with open(os.path.join(self.steps_dir, "9_segment_predictions.json"), "w") as f:
+        with open(os.path.join(self.steps_dir, "5.2_segment_predictions.json"), "w") as f:
             json.dump(segment_predictions, f, indent=2)
         
         # Save the restored audio
